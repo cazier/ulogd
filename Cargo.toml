@@ -8,3 +8,5 @@ rocket = { version = "0.5.1", features = ["json", "serde_json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 sea-orm = { version = "1", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
 tokio = { version = "1.52.3", features = ["macros"] }
+libc = { version = "0.2.186", features = ["std"] }
+test-case = "3.3.1"

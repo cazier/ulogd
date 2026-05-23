@@ -1,0 +1,75 @@
+use libc::{getprotobynumber, getservbyport, protoent, servent};
+use std::os::raw::{c_char, c_int};
+use std::ptr::null;
+
+pub fn getprotofromnumber(number: u8) -> Option<String> {
+    unsafe {
+        let protocol: *mut protoent = getprotobynumber(number as c_int);
+        if protocol.is_null() {
+            return None;
+        }
+        let name = std::ffi::CStr::from_ptr((*protocol).p_name)
+            .to_string_lossy()
+            .into_owned();
+        Some(name)
+    }
+}
+
+pub fn getservicefromport(port: u16, protocol: Option<String>) -> Option<String> {
+    let proto_c = protocol.and_then(|proto| std::ffi::CString::new(proto).ok());
+    let protocol_ptr = proto_c
+        .as_ref()
+        .map_or(null(), |c_string| c_string.as_ptr());
+
+    unsafe {
+        let service: *mut servent = getservbyport(port.to_be().into(), protocol_ptr);
+
+        if service.is_null() {
+            return None;
+        }
+        let name = std::ffi::CStr::from_ptr((*service).s_name)
+            .to_string_lossy()
+            .into_owned();
+        Some(name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
+
+    #[test_case(1, "icmp" ; "icmp")]
+    #[test_case(17, "udp" ; "udp")]
+    fn test_get_valid_proto(number: u8, kind: &str) {
+        assert_eq!(getprotofromnumber(number), Some(kind.to_string()));
+    }
+
+    #[test]
+    fn test_get_invalid_proto() {
+        assert_eq!(getprotofromnumber(179), None);
+    }
+
+    #[test_case(443, "tcp", "https" ; "443/tcp")]
+    #[test_case(443, "udp", "https" ; "443/udp")]
+    #[test_case(80, "tcp", "http" ; "80/tcp")]
+    fn test_get_valid_service_explicit(port: u16, protocol: &str, service: &str) {
+        assert_eq!(
+            getservicefromport(port, Some(protocol.to_string())),
+            Some(service.to_string())
+        );
+    }
+
+    #[test_case(443, "https" ; "443")]
+    #[test_case(80, "http" ; "80")]
+    fn test_get_valid_service_implicit(port: u16, service: &str) {
+        assert_eq!(getservicefromport(port, None), Some(service.to_string()));
+    }
+
+    #[test]
+    fn test_get_invalid_service() {
+        assert_eq!(getservicefromport(17910, None), None);
+        assert_eq!(getservicefromport(17910, Some("tcp".to_string())), None);
+        assert_eq!(getservicefromport(17910, Some("udp".to_string())), None);
+    }
+}
