@@ -1,0 +1,10 @@
+[package]
+name = "firewall-vis"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rocket = { version = "0.5.1", features = ["json", "serde_json"] }
+serde = { version = "1.0.228", features = ["derive"] }
+sea-orm = { version = "1", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
+tokio = { version = "1.52.3", features = ["macros"] }
