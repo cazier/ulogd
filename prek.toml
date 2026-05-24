@@ -1,0 +1,18 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+[[repos]]
+repo = "builtin"
+hooks = [
+    { id = "trailing-whitespace" },
+    { id = "end-of-file-fixer" },
+    { id = "check-added-large-files" },
+]
+
+[[repos]]
+repo = "https://github.com/bnjbvr/cargo-machete"
+rev = "v0.9.2"
+hooks = [
+    { id = "cargo-machete" },
+]

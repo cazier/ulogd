@@ -1,12 +1,10 @@
 use rocket::FromForm;
 use sea_orm::sea_query::{Asterisk, Expr, Func, SimpleExpr};
-use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
-    QuerySelect, Select,
-};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
 use super::log::{self, Entity as Log};
-use super::models::{Stats, Top};
+use super::models::{Options, Stats, Top};
+use crate::utils::get_protocol_from_number;
 
 #[derive(FromForm, Debug, Clone)]
 pub struct FilterForm {
@@ -32,17 +30,34 @@ enum TopKind {
     DstPort,
 }
 
-impl FilterForm {
-    fn min_time(&self) -> u32 {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as u32
-            - self.time_range
-    }
+#[allow(non_camel_case_types)]
+enum OptionKind {
+    iiface,
+    oiface,
+    protocols,
+}
 
-    fn _base(&self) -> Select<log::Entity> {
-        let mut q = Log::find().filter(log::Column::OobTimeSec.gte(self.min_time()));
+#[cfg(not(debug_assertions))]
+fn from_time(param: u32) -> sea_orm::Select<log::Entity> {
+    Log::find().filter(
+        log::Column::OobTimeSec.gte(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u32
+                - param,
+        ),
+    )
+}
+
+#[cfg(debug_assertions)]
+fn from_time(_: u32) -> sea_orm::Select<log::Entity> {
+    Log::find().filter(log::Column::OobTimeSec.gte(0))
+}
+
+impl FilterForm {
+    fn _base(&self) -> sea_orm::Select<log::Entity> {
+        let mut q = from_time(self.time_range);
 
         if let Some(src_ip) = &self.src_ip {
             q = q.filter(log::Column::SrcIp.eq(src_ip));
@@ -52,14 +67,14 @@ impl FilterForm {
         }
         if let Some(src_port) = self.src_port {
             q = q.filter(
-                Condition::any()
+                sea_orm::Condition::any()
                     .add(log::Column::TcpSport.eq(src_port))
                     .add(log::Column::UdpSport.eq(src_port)),
             );
         }
         if let Some(dst_port) = self.dst_port {
             q = q.filter(
-                Condition::any()
+                sea_orm::Condition::any()
                     .add(log::Column::TcpDport.eq(dst_port))
                     .add(log::Column::UdpDport.eq(dst_port)),
             );
@@ -79,7 +94,7 @@ impl FilterForm {
         q
     }
 
-    pub async fn query(&self, db: &DatabaseConnection) -> Result<Vec<log::Model>, DbErr> {
+    pub async fn query(&self, db: &DatabaseConnection) -> Result<Vec<log::Model>, sea_orm::DbErr> {
         self._base()
             .limit(self.limit as u64)
             .offset(self.offset as u64)
@@ -91,7 +106,7 @@ impl FilterForm {
         &self,
         db: &DatabaseConnection,
         kind: TopKind,
-    ) -> impl Future<Output = Result<Vec<Top>, DbErr>> {
+    ) -> impl Future<Output = Result<Vec<Top>, sea_orm::DbErr>> {
         let query = match kind {
             TopKind::SrcIp => self
                 ._base()
@@ -113,7 +128,7 @@ impl FilterForm {
                     .column_as(_kind.cast_as("text"), "key")
                     .column_as(log::Column::Proto, "proto")
                     .filter(
-                        Condition::any()
+                        sea_orm::Condition::any()
                             .add(log::Column::TcpDport.is_not_null())
                             .add(log::Column::UdpDport.is_not_null()),
                     )
@@ -130,12 +145,56 @@ impl FilterForm {
             .all(db)
     }
 
-    pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, DbErr> {
+    pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
         Ok(Stats {
             src_ips: self.top(db, TopKind::SrcIp).await?,
             dst_ips: self.top(db, TopKind::DstIp).await?,
             dst_ports: self.top(db, TopKind::DstPort).await?,
             ..Stats::default()
+        })
+    }
+}
+
+#[derive(FromForm, Debug, Clone)]
+pub struct OptionsForm {
+    #[field(default = 3600)]
+    pub time_range: u32,
+}
+
+impl OptionsForm {
+    async fn distinct(
+        &self,
+        db: &DatabaseConnection,
+        kind: OptionKind,
+    ) -> Result<Vec<String>, sea_orm::DbErr> {
+        let col = match kind {
+            OptionKind::iiface => log::Column::Iiface,
+            OptionKind::oiface => log::Column::Oiface,
+            OptionKind::protocols => log::Column::Proto,
+        };
+
+        let query = from_time(self.time_range)
+            .select_only()
+            .column(col)
+            .filter(col.is_not_null())
+            .filter(col.ne(""))
+            .distinct();
+
+        if matches!(kind, OptionKind::protocols) {
+            let protos = query.into_tuple::<u8>().all(db).await?;
+            return Ok(protos
+                .into_iter()
+                .filter_map(get_protocol_from_number)
+                .collect());
+        }
+        query.into_tuple::<String>().all(db).await
+    }
+
+    pub async fn query(&self, db: &DatabaseConnection) -> Result<Options, sea_orm::DbErr> {
+        Ok(Options {
+            iifaces: self.distinct(db, OptionKind::iiface).await?,
+            oifaces: self.distinct(db, OptionKind::oiface).await?,
+            protocols: self.distinct(db, OptionKind::protocols).await?,
         })
     }
 }

@@ -1,6 +1,12 @@
 use sea_orm::FromQueryResult;
 use serde::Serialize;
 
+#[derive(Serialize, Clone)]
+pub enum Action {
+    Allowed,
+    Blocked,
+}
+
 #[derive(Serialize, Default, Clone)]
 pub struct TimelinePoint {
     time: u32,
@@ -31,4 +37,20 @@ pub struct Stats {
     pub dst_ips: Vec<Top>,
     pub dst_ports: Vec<Top>,
     pub totals: Totals,
+}
+
+#[derive(Serialize, Clone, Default)]
+pub struct Options {
+    pub iifaces: Vec<String>,
+    pub oifaces: Vec<String>,
+    pub protocols: Vec<String>,
+}
+
+impl From<String> for Action {
+    fn from(value: String) -> Self {
+        if value.ends_with("block") {
+            return Action::Blocked;
+        }
+        return Action::Allowed;
+    }
 }
