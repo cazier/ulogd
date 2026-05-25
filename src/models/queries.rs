@@ -184,17 +184,17 @@ impl FilterForm {
 
     pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
         let (packets, bytes) = self.count(db).await?;
-        Ok(Stats {
-            src_ips: self.top(db, TopKind::SrcIp).await?,
-            dst_ips: self.top(db, TopKind::DstIp).await?,
-            dst_ports: self.top(db, TopKind::DstPort).await?,
-            totals: Totals::new(
+        Ok(Stats::new(
+            self.top(db, TopKind::SrcIp).await?,
+            self.top(db, TopKind::DstIp).await?,
+            self.top(db, TopKind::DstPort).await?,
+            Totals::new(
                 packets,
                 bytes,
                 self.distinct(db, TopKind::SrcIp).await?,
                 self.distinct(db, TopKind::DstIp).await?,
             ),
-        })
+        ))
     }
 }
 
@@ -234,10 +234,10 @@ impl OptionsForm {
     }
 
     pub async fn query(&self, db: &DatabaseConnection) -> Result<Options, sea_orm::DbErr> {
-        Ok(Options {
-            iifaces: self.distinct(db, OptionKind::iiface).await?,
-            oifaces: self.distinct(db, OptionKind::oiface).await?,
-            protocols: self.distinct(db, OptionKind::protocols).await?,
-        })
+        Ok(Options::new(
+            self.distinct(db, OptionKind::iiface).await?,
+            self.distinct(db, OptionKind::oiface).await?,
+            self.distinct(db, OptionKind::protocols).await?,
+        ))
     }
 }

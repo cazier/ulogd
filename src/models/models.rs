@@ -22,7 +22,7 @@ pub struct Top {
     bytes: u32,
 }
 
-#[derive(Serialize, Default, Clone)]
+#[derive(Serialize, Default, Clone, macros::New)]
 pub struct Totals {
     packets: String,
     bytes: String,
@@ -30,31 +30,20 @@ pub struct Totals {
     dst: String,
 }
 
-impl Totals {
-    pub fn new(packets: String, bytes: String, src: String, dst: String) -> Self {
-        Self {
-            packets: packets,
-            bytes: bytes,
-            src: src,
-            dst: dst,
-        }
-    }
-}
-
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Clone, Default, macros::New)]
 pub struct Stats {
     // pub timeline: Vec<TimelinePoint>,
-    pub src_ips: Vec<Top>,
-    pub dst_ips: Vec<Top>,
-    pub dst_ports: Vec<Top>,
-    pub totals: Totals,
+    src_ips: Vec<Top>,
+    dst_ips: Vec<Top>,
+    dst_ports: Vec<Top>,
+    totals: Totals,
 }
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Clone, Default, macros::New)]
 pub struct Options {
-    pub iifaces: Vec<String>,
-    pub oifaces: Vec<String>,
-    pub protocols: Vec<String>,
+    iifaces: Vec<String>,
+    oifaces: Vec<String>,
+    protocols: Vec<String>,
 }
 
 impl From<String> for Action {

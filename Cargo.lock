@@ -557,6 +557,7 @@ name = "firewall-vis"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "macros",
  "rocket",
  "sea-orm",
  "serde",
@@ -1206,6 +1207,14 @@ dependencies = [
  "nix",
  "serde",
  "winapi",
+]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
