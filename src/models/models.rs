@@ -24,15 +24,26 @@ pub struct Top {
 
 #[derive(Serialize, Default, Clone)]
 pub struct Totals {
-    packets: u64,
-    bytes: u64,
-    src: u64,
-    dst: u64,
+    packets: String,
+    bytes: String,
+    src: String,
+    dst: String,
+}
+
+impl Totals {
+    pub fn new(packets: String, bytes: String, src: String, dst: String) -> Self {
+        Self {
+            packets: packets,
+            bytes: bytes,
+            src: src,
+            dst: dst,
+        }
+    }
 }
 
 #[derive(Serialize, Clone, Default)]
 pub struct Stats {
-    pub timeline: Vec<TimelinePoint>,
+    // pub timeline: Vec<TimelinePoint>,
     pub src_ips: Vec<Top>,
     pub dst_ips: Vec<Top>,
     pub dst_ports: Vec<Top>,

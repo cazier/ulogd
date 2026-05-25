@@ -6,6 +6,7 @@ use serde::Serialize;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub oob_time_sec: u32,
+    #[sea_orm(primary_key, auto_increment = false)]
     pub oob_time_usec: u32,
     #[sea_orm(column_name = "oob_prefix")]
     pub prefix: String,

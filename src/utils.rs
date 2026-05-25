@@ -2,6 +2,11 @@ use libc::{getprotobynumber, getservbyport, protoent, servent};
 use std::os::raw::c_int;
 use std::ptr::null;
 
+const K: u64 = 10u64.pow(3);
+const M: u64 = 10u64.pow(6);
+const G: u64 = 10u64.pow(9);
+const T: u64 = 10u64.pow(12);
+
 pub fn get_protocol_from_number(number: u8) -> Option<String> {
     unsafe {
         let protocol: *mut protoent = getprotobynumber(number as c_int);
@@ -30,6 +35,16 @@ pub fn get_service_from_port(port: u16, protocol: Option<String>) -> Option<Stri
             .to_string_lossy()
             .into_owned();
         Some(name)
+    }
+}
+
+pub fn humanize(value: u64) -> String {
+    match value {
+        0..K => format!("{}", value),
+        K..M => format!("{:.1} k", value as f64 / K as f64),
+        M..G => format!("{:.1} M", value as f64 / M as f64),
+        G..T => format!("{:.1} B", value as f64 / G as f64),
+        T.. => format!("{:.1} T", value as f64 / T as f64),
     }
 }
 
@@ -70,5 +85,14 @@ mod tests {
         assert_eq!(get_service_from_port(17910, None), None);
         assert_eq!(get_service_from_port(17910, Some("tcp".to_string())), None);
         assert_eq!(get_service_from_port(17910, Some("udp".to_string())), None);
+    }
+
+    #[test_case(123, "123" ; "hundreds")]
+    #[test_case(123456, "123.5 k" ; "thousands")]
+    #[test_case(123456789, "123.5 M" ; "millions")]
+    #[test_case(123456789012, "123.5 B" ; "billions")]
+    #[test_case(123456789012345, "123.5 T" ; "trillions")]
+    fn test_humanize(number: u64, pretty: &str) {
+        assert_eq!(humanize(number), pretty.to_string());
     }
 }

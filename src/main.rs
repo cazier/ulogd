@@ -12,17 +12,17 @@ fn index() -> content::RawHtml<&'static str> {
 
 #[get("/api/stats?<filter..>")]
 async fn api_stats(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Stats> {
-    Json(filter.stats(db.inner()).await.unwrap_or_default())
+    return Json(filter.stats(db.inner()).await.unwrap());
 }
 
 #[get("/api/logs?<filter..>")]
 async fn api_logs(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Vec<Log>> {
-    Json(filter.query(db.inner()).await.unwrap_or_default())
+    return Json(filter.query(db.inner()).await.unwrap());
 }
 
 #[get("/api/options?<options..>")]
 async fn options(options: OptionsForm, db: &State<DatabaseConnection>) -> Json<Options> {
-    Json(options.query(db.inner()).await.unwrap_or_default())
+    return Json(options.query(db.inner()).await.unwrap());
 }
 
 #[launch]

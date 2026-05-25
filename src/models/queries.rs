@@ -1,10 +1,14 @@
 use rocket::FromForm;
 use sea_orm::sea_query::{Asterisk, Expr, Func, SimpleExpr};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect,
+};
 
 use super::log::{self, Entity as Log};
 use super::models::{Options, Stats, Top};
-use crate::utils::get_protocol_from_number;
+use crate::models::models::Totals;
+use crate::utils::{get_protocol_from_number, humanize};
 
 #[derive(FromForm, Debug, Clone)]
 pub struct FilterForm {
@@ -145,12 +149,51 @@ impl FilterForm {
             .all(db)
     }
 
+    async fn distinct(
+        &self,
+        db: &DatabaseConnection,
+        kind: TopKind,
+    ) -> Result<String, sea_orm::DbErr> {
+        let count = self
+            ._base()
+            .select_only()
+            .column(match kind {
+                TopKind::SrcIp => log::Column::SrcIp,
+                TopKind::DstIp => log::Column::DstIp,
+                _ => panic!("Ahhhh"),
+            })
+            .distinct()
+            .count(db)
+            .await?;
+        return Ok(humanize(count));
+    }
+
+    async fn count(&self, db: &DatabaseConnection) -> Result<(String, String), sea_orm::DbErr> {
+        let row: Option<(i64, i64)> = self
+            ._base()
+            .select_only()
+            .expr_as(Expr::col(Asterisk).count(), "count")
+            .column_as(log::Column::Length.sum(), "bytes")
+            .into_tuple()
+            .one(db)
+            .await?;
+
+        let (packets, bytes) = row.unwrap();
+        Ok((humanize(packets as u64), humanize(bytes as u64)))
+    }
+
     pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
+        let (packets, bytes) = self.count(db).await?;
         Ok(Stats {
             src_ips: self.top(db, TopKind::SrcIp).await?,
             dst_ips: self.top(db, TopKind::DstIp).await?,
             dst_ports: self.top(db, TopKind::DstPort).await?,
-            ..Stats::default()
+            totals: Totals::new(
+                packets,
+                bytes,
+                self.distinct(db, TopKind::SrcIp).await?,
+                self.distinct(db, TopKind::DstIp).await?,
+            ),
         })
     }
 }
