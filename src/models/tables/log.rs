@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize)]
+#[derive(Clone, Debug, DeriveEntityModel, Serialize)]
 #[sea_orm(table_name = "log")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -36,3 +36,10 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl super::HasTimestamp for Entity {
+    type TimestampColumn = Column;
+    fn timestamp_column() -> Column {
+        Column::OobTimeSec
+    }
+}
