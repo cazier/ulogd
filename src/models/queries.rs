@@ -1,13 +1,12 @@
-use super::models::{Options, Stats, Top};
-use super::tables::HasTimestamp;
-use super::tables::filters;
-use super::tables::log;
-use crate::models::models::Totals;
+use super::{
+    models::{Options, Stats, Top, Totals},
+    tables::{HasTimestamp, filters, log},
+};
 use crate::utils::{get_protocol_from_number, humanize};
 use rocket::FromForm;
-use sea_orm::sea_query::{Asterisk, Expr, Func, SimpleExpr};
 use sea_orm::{
     ColumnTrait, DatabaseConnection, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
+    sea_query::{Asterisk, Expr, Func, SimpleExpr},
 };
 
 #[derive(FromForm, Debug, Clone)]

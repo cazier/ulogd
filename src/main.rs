@@ -1,9 +1,8 @@
 #[macro_use]
 extern crate rocket;
 
-use firewall_vis::models::{FilterForm, Log, Options, OptionsForm, Stats};
+use firewall_vis::models::{DatabaseConnection, FilterForm, Log, Options, OptionsForm, Stats};
 use rocket::{State, response::content, serde::json::Json};
-use sea_orm::DatabaseConnection;
 
 #[get("/")]
 fn index() -> content::RawHtml<&'static str> {
