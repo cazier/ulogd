@@ -1,8 +1,8 @@
 use super::{
-    models::{Options, Stats, Top, Totals},
+    models::{Options, Stats, TimelinePoint, Top, Totals},
     tables::{HasTimestamp, filters, log},
 };
-use crate::utils::{get_protocol_from_number, humanize};
+use crate::utils::get_protocol_from_number;
 use rocket::FromForm;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
@@ -145,7 +145,7 @@ impl FilterForm {
         &self,
         db: &DatabaseConnection,
         kind: TopKind,
-    ) -> Result<String, sea_orm::DbErr> {
+    ) -> Result<u32, sea_orm::DbErr> {
         let count = self
             ._base()
             .select_only()
@@ -157,10 +157,10 @@ impl FilterForm {
             .distinct()
             .count(db)
             .await?;
-        return Ok(humanize(count));
+        return Ok(count as u32);
     }
 
-    async fn count(&self, db: &DatabaseConnection) -> Result<(String, String), sea_orm::DbErr> {
+    async fn count(&self, db: &DatabaseConnection) -> Result<(u32, u32), sea_orm::DbErr> {
         let row: Option<(i64, i64)> = self
             ._base()
             .select_only()
@@ -171,12 +171,45 @@ impl FilterForm {
             .await?;
 
         let (packets, bytes) = row.unwrap();
-        Ok((humanize(packets as u64), humanize(bytes as u64)))
+        Ok((packets as u32, bytes as u32))
+    }
+
+    async fn generate_timeline(
+        &self,
+        db: &DatabaseConnection,
+    ) -> Result<Vec<TimelinePoint>, sea_orm::DbErr> {
+        // time
+        // packets
+
+        let bucket = match self.time_range {
+            0..=300 => 10,
+            301..=900 => 30,
+            901..=3600 => 60,
+            3601..=21600 => 300,
+            _ => 900,
+        };
+
+        let timeline = self
+            ._base()
+            .select_only()
+            .expr_as(Expr::col(Asterisk).count(), "packets")
+            .expr_as(
+                Expr::cust(format!("(oob_time_sec / {bucket}) * {bucket}")),
+                "time",
+            )
+            .group_by(Expr::cust("time"))
+            .order_by_asc(Expr::cust("time"))
+            .into_model::<TimelinePoint>()
+            .all(db)
+            .await?;
+
+        Ok(timeline)
     }
 
     pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
         let (packets, bytes) = self.count(db).await?;
         Ok(Stats::new(
+            self.generate_timeline(db).await?,
             self.top(db, TopKind::SrcIp).await?,
             self.top(db, TopKind::DstIp).await?,
             self.top(db, TopKind::DstPort).await?,

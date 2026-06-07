@@ -7,11 +7,10 @@ pub enum Action {
     Blocked,
 }
 
-#[derive(Serialize, Default, Clone)]
+#[derive(Serialize, Default, Clone, FromQueryResult)]
 pub struct TimelinePoint {
     time: u32,
-    packets: u64,
-    bytes: u64,
+    packets: u32,
 }
 
 #[derive(Serialize, Default, Debug, Clone, FromQueryResult)]
@@ -24,15 +23,15 @@ pub struct Top {
 
 #[derive(Serialize, Default, Clone, macros::New)]
 pub struct Totals {
-    packets: String,
-    bytes: String,
-    src: String,
-    dst: String,
+    packets: u32,
+    bytes: u32,
+    src: u32,
+    dst: u32,
 }
 
 #[derive(Serialize, Clone, Default, macros::New)]
 pub struct Stats {
-    // pub timeline: Vec<TimelinePoint>,
+    pub timeline: Vec<TimelinePoint>,
     src_ips: Vec<Top>,
     dst_ips: Vec<Top>,
     dst_ports: Vec<Top>,
