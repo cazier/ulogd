@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate rocket;
-
-use firewall_vis::models::{DatabaseConnection, FilterForm, Log, Options, OptionsForm, Stats};
 use rocket::{State, response::content, serde::json::Json};
+use sea_orm::DatabaseConnection;
+
+use firewall_vis::models::{FilterForm, Log, Options, OptionsForm, Stats, Summary};
 
 #[get("/")]
 fn index() -> content::RawHtml<&'static str> {
@@ -10,8 +11,13 @@ fn index() -> content::RawHtml<&'static str> {
 }
 
 #[get("/api/stats?<filter..>")]
-async fn api_stats(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Stats> {
-    return Json(filter.stats(db.inner()).await.unwrap());
+async fn stats(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Stats> {
+    return Json(filter.live(db.inner()).await.unwrap());
+}
+
+#[get("/api/summary?<filter..>")]
+async fn summary(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Summary> {
+    return Json(filter.summary(db.inner()).await.unwrap());
 }
 
 #[get("/api/logs?<filter..>")]
@@ -31,6 +37,6 @@ async fn rocket() -> _ {
         .expect("failed to connect to database");
 
     rocket::build()
-        .mount("/", routes![index, api_logs, api_stats, options])
+        .mount("/", routes![index, api_logs, stats, summary, options])
         .manage(db)
 }

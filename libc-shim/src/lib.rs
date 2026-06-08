@@ -2,11 +2,6 @@ use libc::{getprotobynumber, getservbyport, protoent, servent};
 use std::os::raw::c_int;
 use std::ptr::null;
 
-const K: u64 = 10u64.pow(3);
-const M: u64 = 10u64.pow(6);
-const G: u64 = 10u64.pow(9);
-const T: u64 = 10u64.pow(12);
-
 pub fn get_protocol_from_number(number: u8) -> Option<String> {
     unsafe {
         let protocol: *mut protoent = getprotobynumber(number as c_int);
@@ -36,6 +31,36 @@ pub fn get_service_from_port(port: u16, protocol: Option<String>) -> Option<Stri
             .into_owned();
         Some(name)
     }
+}
+
+pub fn javascript_data() -> String {
+    let services: Vec<String> = [None, Some("tcp"), Some("udp")]
+        .iter()
+        .flat_map(|&proto| {
+            (1..=65535).filter_map(move |port| {
+                get_service_from_port(port, proto.map(str::to_string)).map(|name| match proto {
+                    None => format!("{port}:{name:?}"),
+                    Some(p) => format!("\"{port}/{p}\":\"{name}/{p}\""),
+                })
+            })
+        })
+        .collect();
+
+    let protocols: Vec<String> = (0u8..=255)
+        .filter_map(|n| get_protocol_from_number(n).map(|name| format!("{n}:{name:?}")))
+        .collect();
+
+    format!(
+        r#"
+const PROTOCOLS={};
+const SERVICES={};
+
+{}
+"#,
+        serde_json::to_string(&protocols).unwrap(),
+        serde_json::to_string(&services).unwrap(),
+        include_str!("functions.js")
+    )
 }
 
 #[cfg(test)]

@@ -13,6 +13,13 @@ pub struct TimelinePoint {
     packets: u32,
 }
 
+#[derive(Serialize, Default, Clone, macros::New)]
+pub struct Stats {
+    timeline: Vec<TimelinePoint>,
+    protocols: std::collections::BTreeMap<String, u32>,
+    actions: std::collections::BTreeMap<String, u32>,
+}
+
 #[derive(Serialize, Default, Debug, Clone, FromQueryResult)]
 pub struct Top {
     key: String,
@@ -30,8 +37,7 @@ pub struct Totals {
 }
 
 #[derive(Serialize, Clone, Default, macros::New)]
-pub struct Stats {
-    pub timeline: Vec<TimelinePoint>,
+pub struct Summary {
     src_ips: Vec<Top>,
     dst_ips: Vec<Top>,
     dst_ports: Vec<Top>,
@@ -47,7 +53,7 @@ pub struct Options {
 
 impl From<String> for Action {
     fn from(value: String) -> Self {
-        if value.ends_with("block") {
+        if value.ends_with("drop") {
             return Action::Blocked;
         }
         return Action::Allowed;

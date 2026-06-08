@@ -1,8 +1,7 @@
 use super::{
-    models::{Options, Stats, TimelinePoint, Top, Totals},
+    models::{Options, Stats, Summary, TimelinePoint, Top, Totals},
     tables::{HasTimestamp, filters, log},
 };
-use crate::utils::get_protocol_from_number;
 use rocket::FromForm;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
@@ -174,13 +173,36 @@ impl FilterForm {
         Ok((packets as u32, bytes as u32))
     }
 
+    async fn generate_distributions<V>(
+        &self,
+        db: &DatabaseConnection,
+        column: log::Column,
+    ) -> Result<std::collections::BTreeMap<String, u32>, sea_orm::DbErr>
+    where
+        (V, i64): sea_orm::TryGetableMany,
+        V: std::fmt::Display,
+    {
+        let rows: Vec<(V, i64)> = self
+            ._base()
+            .select_only()
+            .column(column)
+            .expr_as(Expr::col(Asterisk).count(), "count")
+            .filter(column.is_not_null())
+            .group_by(column)
+            .into_tuple()
+            .all(db)
+            .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(val, count)| (format!("{val}"), count as u32))
+            .collect())
+    }
+
     async fn generate_timeline(
         &self,
         db: &DatabaseConnection,
     ) -> Result<Vec<TimelinePoint>, sea_orm::DbErr> {
-        // time
-        // packets
-
         let bucket = match self.time_range {
             0..=300 => 10,
             301..=900 => 30,
@@ -206,10 +228,19 @@ impl FilterForm {
         Ok(timeline)
     }
 
-    pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
-        let (packets, bytes) = self.count(db).await?;
+    pub async fn live(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
         Ok(Stats::new(
             self.generate_timeline(db).await?,
+            self.generate_distributions::<u8>(db, log::Column::Proto)
+                .await?,
+            self.generate_distributions::<String>(db, log::Column::Prefix)
+                .await?,
+        ))
+    }
+
+    pub async fn summary(&self, db: &DatabaseConnection) -> Result<Summary, sea_orm::DbErr> {
+        let (packets, bytes) = self.count(db).await?;
+        Ok(Summary::new(
             self.top(db, TopKind::SrcIp).await?,
             self.top(db, TopKind::DstIp).await?,
             self.top(db, TopKind::DstPort).await?,
@@ -241,15 +272,7 @@ impl OptionsForm {
             match row.kind {
                 filters::Kind::InputInterface => iifaces.push(row.value),
                 filters::Kind::OutputInterface => oifaces.push(row.value),
-                filters::Kind::Protocol => {
-                    let name = row
-                        .value
-                        .parse::<u8>()
-                        .ok()
-                        .and_then(get_protocol_from_number)
-                        .unwrap_or(row.value);
-                    protocols.push(name);
-                }
+                filters::Kind::Protocol => protocols.push(row.value),
             }
         }
 
