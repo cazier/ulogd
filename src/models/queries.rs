@@ -1,3 +1,5 @@
+use crate::models::{models::Interface, tables::log::Column::Iiface};
+
 use super::{
     models::{Options, Stats, Summary, TimelinePoint, Top, Totals},
     tables::{HasTimestamp, filters, log},
@@ -228,6 +230,44 @@ impl FilterForm {
         Ok(timeline)
     }
 
+    async fn generate_interfaces(
+        &self,
+        db: &DatabaseConnection,
+    ) -> Result<std::collections::BTreeMap<String, Interface>, sea_orm::DbErr> {
+        let rows: Vec<(Option<String>, Option<String>, i64, i64)> = self
+            ._base()
+            .select_only()
+            .column(log::Column::Iiface)
+            .column(log::Column::Oiface)
+            .expr_as(Expr::col(Asterisk).count(), "packets")
+            .column_as(log::Column::Length.sum(), "bytes")
+            .group_by(log::Column::Iiface)
+            .group_by(log::Column::Oiface)
+            .into_tuple()
+            .all(db)
+            .await?;
+
+        let mut map: std::collections::BTreeMap<String, Interface> =
+            std::collections::BTreeMap::new();
+
+        for (iiface, oiface, packets, bytes) in rows {
+            if let Some(name) = iiface
+                && name != ""
+            {
+                let e = map.entry(name).or_default();
+                e.update_inputs((packets as u32, bytes as u32));
+            }
+            if let Some(name) = oiface
+                && name != ""
+            {
+                let e = map.entry(name).or_default();
+                e.update_outputs((packets as u32, bytes as u32));
+            }
+        }
+
+        Ok(map)
+    }
+
     pub async fn live(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
         Ok(Stats::new(
             self.generate_timeline(db).await?,
@@ -235,6 +275,7 @@ impl FilterForm {
                 .await?,
             self.generate_distributions::<String>(db, log::Column::Prefix)
                 .await?,
+            self.generate_interfaces(db).await?,
         ))
     }
 

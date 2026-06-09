@@ -14,10 +14,19 @@ pub struct TimelinePoint {
 }
 
 #[derive(Serialize, Default, Clone, macros::New)]
+pub struct Interface {
+    packets_in: u32,
+    packets_out: u32,
+    bytes_in: u32,
+    bytes_out: u32,
+}
+
+#[derive(Serialize, Default, Clone, macros::New)]
 pub struct Stats {
     timeline: Vec<TimelinePoint>,
     protocols: std::collections::BTreeMap<String, u32>,
     actions: std::collections::BTreeMap<String, u32>,
+    interfaces: std::collections::BTreeMap<String, Interface>,
 }
 
 #[derive(Serialize, Default, Debug, Clone, FromQueryResult)]
@@ -57,5 +66,17 @@ impl From<String> for Action {
             return Action::Blocked;
         }
         return Action::Allowed;
+    }
+}
+
+impl Interface {
+    pub fn update_inputs(&mut self, inputs: (u32, u32)) {
+        self.packets_in += inputs.0;
+        self.bytes_in += inputs.1;
+    }
+
+    pub fn update_outputs(&mut self, outputs: (u32, u32)) {
+        self.packets_out += outputs.0;
+        self.bytes_out += outputs.1;
     }
 }
