@@ -2,6 +2,7 @@
 extern crate rocket;
 use rocket::{State, response::content, serde::json::Json};
 use sea_orm::DatabaseConnection;
+use std::sync::atomic::AtomicI64;
 
 use firewall_vis::models::{FilterForm, Log, Options, OptionsForm, Stats, Summary};
 
@@ -21,8 +22,12 @@ async fn summary(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Sum
 }
 
 #[get("/api/live?<filter..>")]
-async fn live(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Vec<Log>> {
-    return Json(filter.live(db.inner()).await.unwrap());
+async fn live(
+    filter: FilterForm,
+    db: &State<DatabaseConnection>,
+    row: &State<AtomicI64>,
+) -> Json<Vec<Log>> {
+    return Json(filter.live(db.inner(), row.inner()).await.unwrap());
 }
 
 #[get("/api/options?<options..>")]
@@ -36,7 +41,10 @@ async fn rocket() -> _ {
         .await
         .expect("failed to connect to database");
 
+    let row = AtomicI64::new(0);
+
     rocket::build()
         .mount("/", routes![index, live, stats, summary, options])
         .manage(db)
+        .manage(row)
 }

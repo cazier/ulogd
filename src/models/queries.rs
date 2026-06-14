@@ -1,4 +1,6 @@
-use crate::models::{Log, models::Interface};
+use std::sync::atomic::{AtomicI64, Ordering};
+
+use crate::models::models::Interface;
 
 use super::{
     models::{Options, Stats, Summary, TimelinePoint, Top, Totals},
@@ -91,12 +93,27 @@ impl FilterForm {
         q
     }
 
-    pub async fn live(&self, db: &DatabaseConnection) -> Result<Vec<log::Model>, sea_orm::DbErr> {
-        self._base()
-            .limit(self.limit as u64)
-            .offset(self.offset as u64)
-            .all(db)
-            .await
+    pub async fn live(
+        &self,
+        db: &DatabaseConnection,
+        cursor: &AtomicI64,
+    ) -> Result<Vec<log::Model>, sea_orm::DbErr> {
+        let cursor_id = cursor.load(Ordering::Relaxed);
+
+        let mut query = self
+            ._base()
+            .filter(log::Column::Rowid.gt(cursor_id))
+            .order_by_asc(log::Column::Rowid);
+
+        if cursor_id != 0 {
+            query = query.limit(self.limit as u64).offset(self.offset as u64);
+        };
+
+        query.all(db).await.inspect(|result| {
+            if let Some(last) = result.last() {
+                cursor.store(last.rowid, Ordering::Relaxed);
+            }
+        })
     }
 
     fn top(
