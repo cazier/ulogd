@@ -12,7 +12,7 @@ fn index() -> content::RawHtml<&'static str> {
 
 #[get("/api/stats?<filter..>")]
 async fn stats(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Stats> {
-    return Json(filter.live(db.inner()).await.unwrap());
+    return Json(filter.stats(db.inner()).await.unwrap());
 }
 
 #[get("/api/summary?<filter..>")]
@@ -20,9 +20,9 @@ async fn summary(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Sum
     return Json(filter.summary(db.inner()).await.unwrap());
 }
 
-#[get("/api/logs?<filter..>")]
-async fn api_logs(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Vec<Log>> {
-    return Json(filter.query(db.inner()).await.unwrap());
+#[get("/api/live?<filter..>")]
+async fn live(filter: FilterForm, db: &State<DatabaseConnection>) -> Json<Vec<Log>> {
+    return Json(filter.live(db.inner()).await.unwrap());
 }
 
 #[get("/api/options?<options..>")]
@@ -37,6 +37,6 @@ async fn rocket() -> _ {
         .expect("failed to connect to database");
 
     rocket::build()
-        .mount("/", routes![index, api_logs, stats, summary, options])
+        .mount("/", routes![index, live, stats, summary, options])
         .manage(db)
 }

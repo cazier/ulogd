@@ -1,4 +1,4 @@
-use crate::models::{models::Interface, tables::log::Column::Iiface};
+use crate::models::{Log, models::Interface};
 
 use super::{
     models::{Options, Stats, Summary, TimelinePoint, Top, Totals},
@@ -91,7 +91,7 @@ impl FilterForm {
         q
     }
 
-    pub async fn query(&self, db: &DatabaseConnection) -> Result<Vec<log::Model>, sea_orm::DbErr> {
+    pub async fn live(&self, db: &DatabaseConnection) -> Result<Vec<log::Model>, sea_orm::DbErr> {
         self._base()
             .limit(self.limit as u64)
             .offset(self.offset as u64)
@@ -268,7 +268,7 @@ impl FilterForm {
         Ok(map)
     }
 
-    pub async fn live(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
+    pub async fn stats(&self, db: &DatabaseConnection) -> Result<Stats, sea_orm::DbErr> {
         Ok(Stats::new(
             self.generate_timeline(db).await?,
             self.generate_distributions::<u8>(db, log::Column::Proto)

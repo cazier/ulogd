@@ -4,10 +4,12 @@ use serde::Serialize;
 #[derive(Clone, Debug, DeriveEntityModel, Serialize)]
 #[sea_orm(table_name = "log")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub oob_time_sec: u32,
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub oob_time_usec: u32,
+    #[sea_orm(primary_key)]
+    pub rowid: i64,
+    #[sea_orm(column_name = "oob_time_sec")]
+    pub timestamp_sec: u32,
+    #[sea_orm(column_name = "oob_time_usec")]
+    pub timestamp_usec: u32,
     #[sea_orm(column_name = "oob_prefix")]
     pub prefix: String,
     #[sea_orm(column_name = "oob_in")]
@@ -40,6 +42,6 @@ impl ActiveModelBehavior for ActiveModel {}
 impl super::HasTimestamp for Entity {
     type TimestampColumn = Column;
     fn timestamp_column() -> Column {
-        Column::OobTimeSec
+        Column::TimestampSec
     }
 }
