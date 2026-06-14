@@ -1,12 +1,6 @@
 use sea_orm::FromQueryResult;
 use serde::Serialize;
 
-#[derive(Serialize, Clone)]
-pub enum Action {
-    Allowed,
-    Blocked,
-}
-
 #[derive(Serialize, Default, Clone, FromQueryResult)]
 pub struct TimelinePoint {
     time: u32,
@@ -58,15 +52,6 @@ pub struct Options {
     iifaces: Vec<String>,
     oifaces: Vec<String>,
     protocols: Vec<String>,
-}
-
-impl From<String> for Action {
-    fn from(value: String) -> Self {
-        if value.ends_with("drop") {
-            return Action::Blocked;
-        }
-        return Action::Allowed;
-    }
 }
 
 impl Interface {
