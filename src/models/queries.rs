@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use crate::models::models::Interface;
 
 use super::{
-    models::{Options, Stats, Summary, TimelinePoint, Top, Totals},
+    models::{Bucket, Options, Stats, Summary, Top, Totals},
     tables::{HasTimestamp, filters, log},
 };
 use rocket::FromForm;
@@ -11,22 +11,34 @@ use sea_orm::{
     ColumnTrait, DatabaseConnection, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
     sea_query::{Asterisk, Expr, Func, SimpleExpr},
 };
+use utoipa::IntoParams;
 
-#[derive(FromForm, Debug, Clone)]
+#[derive(FromForm, Debug, Clone, IntoParams)]
 pub struct FilterForm {
     #[field(default = 3600)]
+    /// Seconds in the past to query
     pub time_range: u32,
+    /// Source IPv4 or IPv6 address
     pub src_ip: Option<String>,
+    /// Destination IPv4 or IPv6 address
     pub dst_ip: Option<String>,
+    /// Source Port
     pub src_port: Option<u16>,
+    /// Destination Port
     pub dst_port: Option<u16>,
+    /// Layer 4 Protocol
     pub protocol: Option<u32>,
+    /// Input interface name
     pub iiface: Option<String>,
+    /// Output interface name
     pub oiface: Option<String>,
+    /// Logging group prefix name
     pub prefix: Option<String>,
     #[field(default = 100)]
+    /// Number of results to return
     pub limit: u16,
     #[field(default = 0)]
+    /// Offset to start for results
     pub offset: u16,
 }
 
@@ -221,7 +233,7 @@ impl FilterForm {
     async fn generate_timeline(
         &self,
         db: &DatabaseConnection,
-    ) -> Result<Vec<TimelinePoint>, sea_orm::DbErr> {
+    ) -> Result<Vec<Bucket>, sea_orm::DbErr> {
         let bucket = match self.time_range {
             0..=300 => 10,
             301..=900 => 30,
@@ -240,7 +252,7 @@ impl FilterForm {
             )
             .group_by(Expr::cust("time"))
             .order_by_asc(Expr::cust("time"))
-            .into_model::<TimelinePoint>()
+            .into_model::<Bucket>()
             .all(db)
             .await?;
 
@@ -312,9 +324,10 @@ impl FilterForm {
     }
 }
 
-#[derive(FromForm, Debug, Clone)]
+#[derive(FromForm, Debug, Clone, IntoParams)]
 pub struct OptionsForm {
     #[field(default = 3600)]
+    /// Seconds in the past to query
     pub time_range: u32,
 }
 

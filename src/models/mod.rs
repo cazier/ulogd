@@ -4,7 +4,7 @@ mod models;
 mod queries;
 pub mod tables;
 
-pub use models::{Options, Stats, Summary};
+pub use models::{Bucket, Interface, Options, Stats, Summary, Top, Totals};
 pub use queries::{FilterForm, OptionsForm};
 pub use tables::filters::Model as Filter;
 pub use tables::log::Model as Log;

@@ -11,4 +11,5 @@ macros = { path = "macros" }
 rocket = { version = "0.5.1", features = ["json", "serde_json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 sea-orm = { version = "1", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
-tokio = { version = "1.52.3", features = ["macros"] }
+utoipa = { version = "5.5.0", features = ["rocket_extras"] }
+utoipa-scalar = { version = "0.3.0", features = ["rocket"] }
