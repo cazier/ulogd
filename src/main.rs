@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicI64;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 
-use firewall_vis::models::{
+use firewalleye::models::{
     Bucket, FilterForm, Interface, Log, Options, OptionsForm, Stats, Summary, Top, Totals,
 };
 
@@ -57,7 +57,7 @@ async fn options(options: OptionsForm, db: &State<DatabaseConnection>) -> Json<O
 
 #[launch]
 async fn rocket() -> _ {
-    let db = firewall_vis::models::init_db()
+    let db = firewalleye::models::init_db()
         .await
         .expect("failed to connect to database");
 

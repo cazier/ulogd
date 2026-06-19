@@ -32,8 +32,8 @@ pub struct FilterForm {
     pub iiface: Option<String>,
     /// Output interface name
     pub oiface: Option<String>,
-    /// Logging group prefix name
-    pub prefix: Option<String>,
+    /// Whether traffic was allowed through (was not blocked/dropped)
+    pub allowed: Option<bool>,
     #[field(default = 100)]
     /// Number of results to return
     pub limit: u16,
@@ -99,10 +99,14 @@ impl FilterForm {
         if let Some(oiface) = &self.oiface {
             q = q.filter(log::Column::Oiface.eq(oiface));
         }
-        if let Some(prefix) = &self.prefix {
-            q = q.filter(log::Column::Prefix.eq(prefix));
+        if let Some(allowed) = &self.allowed {
+            let prefix = match allowed {
+                true => "allow",
+                false => "drop",
+            };
+            q = q.filter(log::Column::Prefix.contains(prefix));
         }
-        q
+        return q;
     }
 
     pub async fn live(

@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Firewall Visualizer</title>
+        <style>
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            :root {
+                --bg: #161a2a;
+                --card: #1c2035;
+                --card2: #232840;
+                --border: #2a3050;
+                --text: #c8d0e8;
+                --muted: #6b7a9e;
+                --primary: #d4622a;
+                --green: #2ecc71;
+                --red: #e74c3c;
+                --blue: #3b9eff;
+                --purple: #9c88ff;
+                --teal: #00d2c8;
+                --yellow: #f5c842;
+            }
+
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                    "Segoe UI",
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                font-size: 13px;
+                line-height: 1.5;
+            }
+
+            /* ── Header ── */
+            header {
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                height: 52px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 0 20px;
+                background: var(--card);
+                border-bottom: 1px solid var(--border);
+            }
+            .logo {
+                width: 30px;
+                height: 30px;
+                background: var(--primary);
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 14px;
+                color: #fff;
+                flex-shrink: 0;
+            }
+            h1 {
+                font-size: 15px;
+                font-weight: 600;
+            }
+            .hdr-right {
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .live-pill {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                background: var(--card2);
+                border: 1px solid var(--border);
+                border-radius: 20px;
+                padding: 4px 10px;
+                font-size: 11px;
+                color: var(--muted);
+            }
+            .dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--muted);
+                transition:
+                    background 0.3s,
+                    box-shadow 0.3s;
+            }
+            .dot.on {
+                background: var(--green);
+                box-shadow: 0 0 6px var(--green);
+                animation: pulse 2s ease-in-out infinite;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.4;
+                }
+            }
+
+            /* ── Controls ── */
+            input,
+            select,
+            button {
+                font-family: inherit;
+                font-size: 12px;
+                background: var(--card2);
+                border: 1px solid var(--border);
+                border-radius: 5px;
+                color: var(--text);
+                padding: 4px 8px;
+                outline: none;
+                transition: border-color 0.15s;
+                cursor: pointer;
+            }
+            input {
+                cursor: text;
+            }
+            input:focus,
+            select:focus {
+                border-color: var(--primary);
+            }
+            button:hover {
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+            button.active {
+                background: var(--primary);
+                border-color: var(--primary);
+                color: #fff;
+            }
+            select option {
+                background: var(--card2);
+            }
+
+            /* ── Layout ── */
+            main {
+                max-width: 1700px;
+                margin: 0 auto;
+                padding: 14px 16px;
+            }
+
+            .filters {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 10px 14px;
+                margin-bottom: 12px;
+            }
+            .frow {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+            }
+            .frow:last-child {
+                margin-bottom: 0;
+            }
+            label {
+                color: var(--muted);
+                font-size: 11px;
+                white-space: nowrap;
+            }
+            .sep {
+                width: 1px;
+                height: 18px;
+                background: var(--border);
+                flex-shrink: 0;
+            }
+            .fgrid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+            }
+            .fgrid .sep {
+                display: none;
+            }
+            .f-field {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 3px;
+            }
+            .f-field input,
+            .f-field select {
+                width: 100%;
+            }
+            .f-iface-group {
+                display: flex;
+                gap: 8px;
+                grid-column: span 2;
+            }
+            .f-iface-group .f-field {
+                flex: 1;
+            }
+
+            @media (max-width: 640px) {
+                .sep {
+                    display: none;
+                }
+                .fgrid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+            @media (max-width: 800px) {
+                .stats {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            .stat {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 12px 14px;
+            }
+            .stat-lbl {
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.7px;
+                color: var(--muted);
+                margin-bottom: 5px;
+            }
+            .stat-val {
+                font-size: 22px;
+                font-weight: 700;
+                line-height: 1;
+            }
+
+            .card {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                overflow: hidden;
+                margin-bottom: 12px;
+            }
+            .card-hd {
+                background: var(--card2);
+                border-bottom: 1px solid var(--border);
+                padding: 8px 14px;
+                font-size: 12px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .badge {
+                font-size: 10px;
+                font-weight: 400;
+                background: var(--border);
+                color: var(--muted);
+                padding: 1px 6px;
+                border-radius: 10px;
+            }
+            .card-body {
+                padding: 12px 14px;
+            }
+            .h180 {
+                height: 180px;
+                position: relative;
+            }
+            .h220 {
+                height: 220px;
+                position: relative;
+            }
+            .h160 {
+                height: 160px;
+                position: relative;
+            }
+
+            .grid2 {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            .grid3 {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            @media (max-width: 1100px) {
+                .grid3 {
+                    grid-template-columns: 1fr 1fr;
+                }
+            }
+            @media (max-width: 700px) {
+                .grid2,
+                .grid3 {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* ── Table ── */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th {
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                color: var(--muted);
+                background: var(--card2);
+                padding: 7px 12px;
+                text-align: left;
+                border-bottom: 1px solid var(--border);
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+            td {
+                padding: 6px 12px;
+                border-bottom: 1px solid rgba(42, 48, 80, 0.5);
+                font-size: 12px;
+                vertical-align: middle;
+            }
+            tr:last-child td {
+                border-bottom: none;
+            }
+
+            .row-accept td:first-child {
+                border-left: 3px solid var(--green);
+            }
+            .row-drop td:first-child {
+                border-left: 3px solid var(--red);
+            }
+            .row-other td:first-child {
+                border-left: 3px solid transparent;
+            }
+
+            .new-batch td:last-child {
+                border-right: 3px solid var(--green);
+            }
+
+            .tag {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+            }
+            .tag-accept {
+                background: rgba(46, 204, 113, 0.15);
+                color: var(--green);
+            }
+            .tag-drop {
+                background: rgba(231, 76, 60, 0.15);
+                color: var(--red);
+            }
+            .tag-log {
+                background: rgba(59, 158, 255, 0.15);
+                color: var(--blue);
+            }
+            .tag-other {
+                background: rgba(107, 122, 158, 0.15);
+                color: var(--muted);
+            }
+            .tag-proto {
+                background: rgba(59, 158, 255, 0.12);
+                color: var(--blue);
+            }
+
+            .mono {
+                font-family:
+                    "SF Mono",
+                    Cascadia Code,
+                    Consolas,
+                    monospace;
+                font-size: 11px;
+            }
+            .empty {
+                text-align: center;
+                color: var(--muted);
+                padding: 32px;
+            }
+
+            .c-orange {
+                color: var(--primary);
+            }
+            .c-blue {
+                color: var(--blue);
+            }
+
+            .port-line {
+                color: var(--muted);
+                font-size: 10px;
+            }
+            .action-name {
+                display: none;
+                color: var(--muted);
+                font-size: 10px;
+            }
+            @media (max-width: 640px) {
+                .action-name {
+                    display: inline;
+                }
+            }
+
+            @media (max-width: 640px) {
+                /* Keep: Action, Proto, Source, Destination */
+                td:nth-child(1), th:nth-child(1), /* Time */
+                td:nth-child(3), th:nth-child(3), /* In */
+                td:nth-child(4), th:nth-child(4), /* Out */
+                td:nth-child(8), th:nth-child(8), /* Len */
+                td:nth-child(9), th:nth-child(9)  /* TTL */ {
+                    display: none;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="logo">FW</div>
+            <h1>Firewall Visualizer</h1>
+            <div class="hdr-right">
+                <div class="live-pill">
+                    <div class="dot" id="dot"></div>
+                    <span id="live-txt">Connecting…</span>
+                </div>
+                <button id="btn-pause">Pause</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="filters">
+                <div class="frow">
+                    <label>Range</label>
+                    <button class="tbtn" data-r="300">5m</button>
+                    <button class="tbtn" data-r="900">15m</button>
+                    <button class="tbtn active" data-r="3600">1h</button>
+                    <button class="tbtn" data-r="21600">6h</button>
+                    <button class="tbtn" data-r="86400">24h</button>
+                    <div class="sep"></div>
+                    <button id="btn-clear" style="color: var(--muted)">
+                        Clear Filters
+                    </button>
+                </div>
+                <div class="frow fgrid">
+                    <div class="f-field">
+                        <label>Src IP</label>
+                        <input id="f-sip" placeholder="192.168.1.1" />
+                    </div>
+                    <div class="f-field">
+                        <label>Dst IP</label>
+                        <input id="f-dip" placeholder="8.8.8.8" />
+                    </div>
+                    <div class="f-field">
+                        <label>Src Port</label>
+                        <input id="f-sp" type="number" placeholder="1024" />
+                    </div>
+                    <div class="f-field">
+                        <label>Dst Port</label>
+                        <input id="f-dp" type="number" placeholder="443" />
+                    </div>
+                </div>
+                <div class="frow fgrid">
+                    <div class="f-field">
+                        <label>In</label>
+                        <select id="f-in">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="f-field">
+                        <label>Out</label>
+                        <select id="f-out">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="f-field">
+                        <label>Protocol</label>
+                        <select id="f-proto">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="f-field">
+                        <label>Action</label>
+                        <select id="f-allow">
+                            <option value="">All</option>
+                            <option value="true">Allowed</option>
+                            <option value="false">Blocked</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-lbl">Total Packets</div>
+                    <div class="stat-val c-orange" id="s-pkts">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-lbl">Total Bytes</div>
+                    <div class="stat-val c-blue" id="s-bytes">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-lbl">Unique Sources</div>
+                    <div class="stat-val" id="s-src">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-lbl">Unique Destinations</div>
+                    <div class="stat-val" id="s-dst">—</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-hd">Traffic Timeline</div>
+                <div class="card-body h180"><canvas id="c-tl"></canvas></div>
+            </div>
+
+            <div class="grid2">
+                <div class="card">
+                    <div class="card-hd">
+                        Top Source IPs <span class="badge">by packets</span>
+                    </div>
+                    <div class="card-body h220">
+                        <canvas id="c-sip"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-hd">
+                        Top Destination IPs
+                        <span class="badge">by packets</span>
+                    </div>
+                    <div class="card-body h220">
+                        <canvas id="c-dip"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid3">
+                <div class="card">
+                    <div class="card-hd">Protocol Distribution</div>
+                    <div class="card-body h220">
+                        <canvas id="c-proto"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-hd">Action Distribution</div>
+                    <div class="card-body h220">
+                        <canvas id="c-action"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-hd">
+                        Top Destination Ports
+                        <span class="badge">by packets</span>
+                    </div>
+                    <div class="card-body h220">
+                        <canvas id="c-ports"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-hd">
+                    Interface Traffic
+                    <span class="badge">packets in / out</span>
+                </div>
+                <div class="card-body h160"><canvas id="c-iface"></canvas></div>
+            </div>
+
+            <div class="card">
+                <div class="card-hd">
+                    Live Log <span class="badge" id="log-badge">live</span>
+                </div>
+                <div style="overflow: auto; max-height: max(300px, 60vh)">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>In</th>
+                                <th>Out</th>
+                                <th>Proto</th>
+                                <th>Source</th>
+                                <th>Destination</th>
+                                <th>Len</th>
+                                <th>TTL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-body">
+                            <tr>
+                                <td colspan="9" class="empty">
+                                    Waiting for packets…
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            const $ = (id) => document.getElementById(id);
+
+            const PAL = [
+                "#3b9eff",
+                "#2ecc71",
+                "#f5c842",
+                "#e74c3c",
+                "#9c88ff",
+                "#d4622a",
+                "#00d2c8",
+                "#f368e0",
+                "#48dbfb",
+                "#ff9f43",
+            ];
+
+            const PROTO_NAMES = {
+                1: "ICMP",
+                2: "IGMP",
+                6: "TCP",
+                17: "UDP",
+                41: "IPv6",
+                47: "GRE",
+                50: "ESP",
+                58: "ICMPv6",
+                89: "OSPF",
+                132: "SCTP",
+            };
+            function protoName(n) {
+                return n != null ? PROTO_NAMES[n] || "proto:" + n : "?";
+            }
+
+            function fmtTime(ts) {
+                return new Date(ts * 1000).toLocaleTimeString("en-US", {
+                    hour12: false,
+                });
+            }
+
+            function humanize(v, bytes) {
+                if (v == null) return "—";
+                const sfx = bytes
+                    ? ["B", "kB", "MB", "GB", "TB"]
+                    : ["", "k", "M", "G", "T"];
+                if (v < 1000) return v + (bytes ? " B" : "");
+                const i = Math.min(
+                    Math.floor(Math.log(v) / Math.log(1000)),
+                    sfx.length - 1,
+                );
+                return (
+                    (v / Math.pow(1000, i)).toFixed(1) +
+                    (bytes ? " " : "") +
+                    sfx[i]
+                );
+            }
+
+            function actionStyle(pfx) {
+                const u = (pfx || "").toUpperCase();
+                if (u.includes("DROP") || u.includes("REJECT"))
+                    return { tag: "tag-drop", row: "row-drop" };
+                if (u.includes("ACCEPT") || u.includes("ALLOW"))
+                    return { tag: "tag-accept", row: "row-accept" };
+                if (u.includes("LOG"))
+                    return { tag: "tag-log", row: "row-other" };
+                return { tag: "tag-other", row: "row-other" };
+            }
+
+            function actionParts(pfx) {
+                const i = (pfx || "").indexOf(":");
+                return i === -1
+                    ? [pfx || "?", ""]
+                    : [pfx.slice(0, i), pfx.slice(i + 1)];
+            }
+
+            function actionColor(pfx) {
+                const u = (pfx || "").toUpperCase();
+                if (u.includes("DROP") || u.includes("REJECT"))
+                    return "#e74c3c";
+                if (u.includes("ACCEPT") || u.includes("ALLOW"))
+                    return "#2ecc71";
+                if (u.includes("LOG")) return "#3b9eff";
+                return "#f5c842";
+            }
+
+            // -- State
+            let timeRange = parseInt(
+                    localStorage.getItem("timeRange") ?? "3600",
+                ),
+                paused = false;
+            let statsTimer = null,
+                liveTimer = null,
+                debounce = null;
+
+            function getFilters() {
+                const f = { time_range: timeRange };
+                const v = (id) => $(id).value.trim();
+                if (v("f-sip")) f.src_ip = v("f-sip");
+                if (v("f-dip")) f.dst_ip = v("f-dip");
+                if (v("f-sp")) f.src_port = v("f-sp");
+                if (v("f-dp")) f.dst_port = v("f-dp");
+                if (v("f-proto")) f.protocol = v("f-proto");
+                if (v("f-in")) f.iiface = v("f-in");
+                if (v("f-out")) f.oiface = v("f-out");
+                if (v("f-allow")) f.allowed = v("f-allow");
+                return f;
+            }
+
+            async function api(path, params) {
+                const r = await fetch(
+                    "/api/" + path + "?" + new URLSearchParams(params),
+                );
+                if (!r.ok) throw new Error(r.status);
+                return r.json();
+            }
+
+            // -- Charts
+            Chart.defaults.color = "#6b7a9e";
+            Chart.defaults.borderColor = "#2a3050";
+            Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+            Chart.defaults.font.size = 11;
+
+            const TIP = {
+                backgroundColor: "#232840",
+                borderColor: "#2a3050",
+                borderWidth: 1,
+                titleColor: "#c8d0e8",
+                bodyColor: "#6b7a9e",
+                padding: 8,
+            };
+            const BASE = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 200 },
+                plugins: { legend: { display: false }, tooltip: TIP },
+            };
+            const HBAR = {
+                ...BASE,
+                indexAxis: "y",
+                scales: {
+                    x: {
+                        grid: { color: "#2a3050" },
+                        ticks: { color: "#6b7a9e" },
+                        beginAtZero: true,
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: "#c8d0e8" },
+                    },
+                },
+            };
+            const DONUT = {
+                ...BASE,
+                cutout: "62%",
+                plugins: {
+                    tooltip: TIP,
+                    legend: {
+                        display: true,
+                        position: "right",
+                        labels: {
+                            color: "#c8d0e8",
+                            boxWidth: 11,
+                            padding: 8,
+                            font: { size: 11 },
+                        },
+                    },
+                },
+            };
+
+            const C = {};
+
+            function initCharts() {
+                function mk(id, type, data, opts) {
+                    return new Chart($(id).getContext("2d"), {
+                        type,
+                        data,
+                        options: opts,
+                    });
+                }
+
+                C.tl = mk(
+                    "c-tl",
+                    "bar",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: "Packets",
+                                data: [],
+                                backgroundColor: "rgba(59,158,255,.5)",
+                                borderColor: "#3b9eff",
+                                borderWidth: 1,
+                                borderRadius: 2,
+                                barPercentage: 0.9,
+                            },
+                        ],
+                    },
+                    {
+                        ...BASE,
+                        scales: {
+                            x: {
+                                grid: { color: "rgba(42,48,80,.4)" },
+                                ticks: { color: "#6b7a9e", maxTicksLimit: 12 },
+                            },
+                            y: {
+                                grid: { color: "rgba(42,48,80,.4)" },
+                                ticks: { color: "#6b7a9e" },
+                                beginAtZero: true,
+                            },
+                        },
+                    },
+                );
+
+                C.sip = mk(
+                    "c-sip",
+                    "bar",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                data: [],
+                                backgroundColor: PAL,
+                                borderRadius: 2,
+                                borderWidth: 0,
+                            },
+                        ],
+                    },
+                    HBAR,
+                );
+                C.dip = mk(
+                    "c-dip",
+                    "bar",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                data: [],
+                                backgroundColor: PAL,
+                                borderRadius: 2,
+                                borderWidth: 0,
+                            },
+                        ],
+                    },
+                    HBAR,
+                );
+                C.ports = mk(
+                    "c-ports",
+                    "bar",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                data: [],
+                                backgroundColor: "#9c88ff",
+                                borderRadius: 2,
+                                borderWidth: 0,
+                            },
+                        ],
+                    },
+                    HBAR,
+                );
+                C.proto = mk(
+                    "c-proto",
+                    "doughnut",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                data: [],
+                                backgroundColor: PAL,
+                                borderWidth: 0,
+                                hoverOffset: 4,
+                            },
+                        ],
+                    },
+                    DONUT,
+                );
+                C.action = mk(
+                    "c-action",
+                    "doughnut",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                data: [],
+                                backgroundColor: [],
+                                borderWidth: 0,
+                                hoverOffset: 4,
+                            },
+                        ],
+                    },
+                    DONUT,
+                );
+
+                C.iface = mk(
+                    "c-iface",
+                    "bar",
+                    {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: "In",
+                                data: [],
+                                backgroundColor: "rgba(59,158,255,.6)",
+                                borderRadius: 2,
+                                borderWidth: 0,
+                            },
+                            {
+                                label: "Out",
+                                data: [],
+                                backgroundColor: "rgba(46,204,113,.55)",
+                                borderRadius: 2,
+                                borderWidth: 0,
+                            },
+                        ],
+                    },
+                    {
+                        ...BASE,
+                        plugins: {
+                            tooltip: TIP,
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: "#c8d0e8",
+                                    boxWidth: 11,
+                                    padding: 8,
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: "#c8d0e8" },
+                            },
+                            y: {
+                                grid: { color: "#2a3050" },
+                                ticks: { color: "#6b7a9e" },
+                                beginAtZero: true,
+                            },
+                        },
+                    },
+                );
+
+                // Click a bar to drill down
+                C.sip.canvas.addEventListener("click", (e) =>
+                    drillClick(C.sip, e, "f-sip"),
+                );
+                C.dip.canvas.addEventListener("click", (e) =>
+                    drillClick(C.dip, e, "f-dip"),
+                );
+            }
+
+            function drillClick(chart, e, filterId) {
+                const pts = chart.getElementsAtEventForMode(
+                    e,
+                    "nearest",
+                    { intersect: true },
+                    true,
+                );
+                if (!pts.length) return;
+                const label = chart.data.labels[pts[0].index];
+                if (label) {
+                    $(filterId).value = label;
+                    refresh();
+                }
+            }
+
+            function set1(chart, labels, data) {
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = data;
+                chart.update("none");
+            }
+
+            // -- Data
+            async function loadStats() {
+                try {
+                    const f = { ...getFilters(), limit: 10, offset: 0 };
+                    const [stats, summary] = await Promise.all([
+                        api("stats", f),
+                        api("summary", f),
+                    ]);
+
+                    // Timeline
+                    const bkts = stats.buckets || [];
+                    set1(
+                        C.tl,
+                        bkts.map((b) => fmtTime(b.time)),
+                        bkts.map((b) => b.packets),
+                    );
+
+                    // Protocols (keys are integer strings like "6", "17")
+                    const pr = stats.protocols || {};
+                    C.proto.data.labels = Object.keys(pr).map((k) =>
+                        protoName(parseInt(k)),
+                    );
+                    C.proto.data.datasets[0].data = Object.values(pr);
+                    C.proto.data.datasets[0].backgroundColor = PAL.slice(
+                        0,
+                        Object.keys(pr).length,
+                    );
+                    C.proto.update("none");
+
+                    // Actions
+                    const ac = stats.actions || {};
+                    C.action.data.labels = Object.keys(ac);
+                    C.action.data.datasets[0].data = Object.values(ac);
+                    C.action.data.datasets[0].backgroundColor =
+                        Object.keys(ac).map(actionColor);
+                    C.action.update("none");
+
+                    // Interfaces
+                    const ifc = stats.interfaces || {};
+                    C.iface.data.labels = Object.keys(ifc);
+                    C.iface.data.datasets[0].data = Object.values(ifc).map(
+                        (i) => i.packets_in,
+                    );
+                    C.iface.data.datasets[1].data = Object.values(ifc).map(
+                        (i) => i.packets_out,
+                    );
+                    C.iface.update("none");
+
+                    // Summary
+                    const t = summary.totals || {};
+                    $("s-pkts").textContent = humanize(t.packets);
+                    $("s-bytes").textContent = humanize(t.bytes, true);
+                    $("s-src").textContent = humanize(t.src);
+                    $("s-dst").textContent = humanize(t.dst);
+
+                    set1(
+                        C.sip,
+                        (summary.src_ips || []).map((r) => r.key),
+                        (summary.src_ips || []).map((r) => r.count),
+                    );
+                    set1(
+                        C.dip,
+                        (summary.dst_ips || []).map((r) => r.key),
+                        (summary.dst_ips || []).map((r) => r.count),
+                    );
+                    set1(
+                        C.ports,
+                        (summary.dst_ports || []).map(
+                            (r) => r.key + " (" + protoName(r.proto) + ")",
+                        ),
+                        (summary.dst_ports || []).map((r) => r.count),
+                    );
+
+                    setLive(true);
+                } catch (e) {
+                    setLive(false);
+                }
+            }
+
+            async function loadOptions() {
+                try {
+                    const d = await api("options", { time_range: timeRange });
+
+                    function repopulate(id, items) {
+                        const el = $(id),
+                            cur = el.value;
+                        el.innerHTML =
+                            '<option value="">All</option>' +
+                            items
+                                .map(
+                                    (v) =>
+                                        `<option value="${v}"${v === cur ? " selected" : ""}>${v}</option>`,
+                                )
+                                .join("");
+                    }
+
+                    // protocols are integer strings; show human name as label, keep value as-is for the filter
+                    const el = $("f-proto"),
+                        cur = el.value;
+                    el.innerHTML =
+                        '<option value="">All</option>' +
+                        (d.protocols || [])
+                            .slice()
+                            .sort((a, b) =>
+                                protoName(parseInt(a)).localeCompare(
+                                    protoName(parseInt(b)),
+                                ),
+                            )
+                            .map((v) => {
+                                const name = protoName(parseInt(v));
+                                return `<option value="${v}"${v === cur ? " selected" : ""}>${name} (${v})</option>`;
+                            })
+                            .join("");
+
+                    repopulate("f-in", (d.iifaces || []).slice().sort());
+                    repopulate("f-out", (d.oifaces || []).slice().sort());
+                } catch (_) {}
+            }
+
+            function rowHtml(r, isNew) {
+                const s = actionStyle(r.prefix);
+                const sp = r.tcp_sport ?? r.udp_sport;
+                const dp = r.tcp_dport ?? r.udp_dport;
+                const icmp =
+                    r.icmp_type != null
+                        ? ` <span style="color:var(--muted);font-size:10px">(${r.icmp_type}/${r.icmp_code})</span>`
+                        : "";
+                const addrCell = (ip, port) =>
+                    `<td class="mono">${ip || "?"}${port != null ? `<br><span class="port-line">:${port}</span>` : ""}</td>`;
+                return `<tr class="${s.row}${isNew ? " new-batch" : ""}">
+                    <td class="mono">${fmtTime(r.timestamp_sec)}</td>
+                    <td>${(() => {
+                        const [lbl, name] = actionParts(r.prefix);
+                        return `<span class="tag ${s.tag}">${lbl}</span>${name ? `<br><span class="action-name">${name}</span>` : ""}`;
+                    })()}</td>
+                    <td>${r.iiface || ""}</td>
+                    <td>${r.oiface || ""}</td>
+                    <td><span class="tag tag-proto">${protoName(r.proto)}</span>${icmp}</td>
+                    ${addrCell(r.src_ip, sp)}
+                    ${addrCell(r.dst_ip, dp)}
+                    <td>${humanize(r.length, true)}</td>
+                    <td>${r.ttl ?? ""}</td>
+                </tr>`;
+            }
+
+            function clearLog() {
+                $("log-body").innerHTML =
+                    '<tr><td colspan="9" class="empty">Waiting for packets…</td></tr>';
+                $("log-badge").textContent = "live";
+            }
+
+            async function fetchLive() {
+                if (paused) return;
+                try {
+                    const rows = await api("live", {
+                        ...getFilters(),
+                        limit: 50,
+                        offset: 0,
+                    });
+                    if (!Array.isArray(rows) || !rows.length) return;
+                    const body = $("log-body");
+                    if (body.querySelector(".empty")) body.innerHTML = "";
+                    body.querySelectorAll(".new-batch").forEach((r) =>
+                        r.classList.remove("new-batch"),
+                    );
+                    body.insertAdjacentHTML(
+                        "afterbegin",
+                        rows.map((r) => rowHtml(r, true)).join(""),
+                    );
+                    while (body.children.length > 20000)
+                        body.lastElementChild.remove();
+                    $("log-badge").textContent = "+" + rows.length + " new";
+                    setLive(true);
+                } catch (_) {
+                    setLive(false);
+                }
+            }
+
+            function setLive(ok) {
+                $("dot").className = "dot" + (ok ? " on" : "");
+                $("live-txt").textContent = ok ? "Live" : "Error";
+            }
+
+            function refresh() {
+                clearLog();
+                loadOptions();
+                loadStats();
+            }
+
+            function schedule() {
+                clearInterval(statsTimer);
+                clearInterval(liveTimer);
+                if (!paused) {
+                    statsTimer = setInterval(loadStats, 15000);
+                    liveTimer = setInterval(fetchLive, 2000);
+                }
+            }
+
+            // -- Boot
+            document.addEventListener("DOMContentLoaded", () => {
+                initCharts();
+
+                // Restore active time range button
+                document.querySelectorAll(".tbtn").forEach((b) => {
+                    b.classList.toggle(
+                        "active",
+                        parseInt(b.dataset.r) === timeRange,
+                    );
+                });
+
+                // Time range buttons
+                document.querySelectorAll(".tbtn").forEach((btn) =>
+                    btn.addEventListener("click", () => {
+                        document
+                            .querySelectorAll(".tbtn")
+                            .forEach((b) => b.classList.remove("active"));
+                        btn.classList.add("active");
+                        timeRange = parseInt(btn.dataset.r);
+                        localStorage.setItem("timeRange", timeRange);
+                        refresh();
+                    }),
+                );
+
+                // Text inputs (debounced)
+                ["f-sip", "f-dip", "f-sp", "f-dp"].forEach((id) =>
+                    $(id).addEventListener("input", () => {
+                        clearTimeout(debounce);
+                        debounce = setTimeout(refresh, 400);
+                    }),
+                );
+
+                // Selects (immediate)
+                ["f-proto", "f-in", "f-out", "f-allow"].forEach((id) =>
+                    $(id).addEventListener("change", refresh),
+                );
+
+                $("btn-clear").addEventListener("click", () => {
+                    ["f-sip", "f-dip", "f-sp", "f-dp"].forEach(
+                        (id) => ($(id).value = ""),
+                    );
+                    ["f-proto", "f-in", "f-out", "f-allow"].forEach(
+                        (id) => ($(id).value = ""),
+                    );
+                    refresh();
+                });
+
+                $("btn-pause").addEventListener("click", () => {
+                    paused = !paused;
+                    $("btn-pause").textContent = paused ? "Resume" : "Pause";
+                    if (paused) {
+                        clearInterval(statsTimer);
+                        clearInterval(liveTimer);
+                        $("dot").className = "dot";
+                        $("live-txt").textContent = "Paused";
+                    } else {
+                        schedule();
+                    }
+                });
+
+                refresh();
+                fetchLive();
+                schedule();
+            });
+        </script>
+    </body>
+</html>

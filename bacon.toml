@@ -1,8 +1,18 @@
-default_job = "run"
+default_job = "debug"
 
-[jobs.run]
+[jobs.debug]
 env.ROCKET_ADDRESS = "0.0.0.0"
 command = ["cargo", "run"]
+watch = ["src"]
+need_stdout = true
+allow_warnings = true
+background = false
+on_change_strategy = "kill_then_restart"
+kill = ["kill", "-s", "INT"]
+
+[jobs.release]
+env.ROCKET_ADDRESS = "0.0.0.0"
+command = ["cargo", "run", "--release"]
 watch = ["src"]
 need_stdout = true
 allow_warnings = true
