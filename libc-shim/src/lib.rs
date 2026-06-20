@@ -1,6 +1,6 @@
+use std::{os::raw::c_int, ptr::null};
+
 use libc::{getprotobynumber, getservbyport, protoent, servent};
-use std::os::raw::c_int;
-use std::ptr::null;
 
 pub fn get_protocol_from_number(number: u8) -> Option<String> {
     unsafe {
@@ -65,8 +65,9 @@ const SERVICES={};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use test_case::test_case;
+
+    use super::*;
 
     #[test_case(1, "icmp" ; "icmp")]
     #[test_case(17, "udp" ; "udp")]

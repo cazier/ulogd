@@ -1,17 +1,17 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use crate::models::models::Interface;
-
-use super::{
-    models::{Bucket, Options, Stats, Summary, Top, Totals},
-    tables::{HasTimestamp, filters, log},
-};
 use rocket::FromForm;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
     sea_query::{Asterisk, Expr, Func, SimpleExpr},
 };
 use utoipa::IntoParams;
+
+use super::{
+    models::{Bucket, Options, Stats, Summary, Top, Totals},
+    tables::{HasTimestamp, filters, log},
+};
+use crate::models::models::Interface;
 
 #[derive(FromForm, Debug, Clone, IntoParams)]
 pub struct FilterForm {

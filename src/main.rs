@@ -1,10 +1,23 @@
 #[macro_use]
 extern crate rocket;
-use rocket::{State, response::content, serde::json::Json};
-use sea_orm::DatabaseConnection;
 use std::sync::atomic::AtomicI64;
+
+use clap::Parser;
+use rocket::{Config, State, response::content, serde::json::Json};
+use sea_orm::DatabaseConnection;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
+
+#[derive(Parser)]
+#[command(about = "Firewall traffic visualizer")]
+struct Args {
+    #[arg(short, long, default_value = "0.0.0.0")]
+    address: String,
+    #[arg(short, long, default_value_t = 8000)]
+    port: u16,
+    #[arg(short, long, default_value = "./firewall.db")]
+    db: String,
+}
 
 use firewalleye::models::{
     Bucket, FilterForm, Interface, Log, Options, OptionsForm, Stats, Summary, Top, Totals,
@@ -57,13 +70,21 @@ async fn options(options: OptionsForm, db: &State<DatabaseConnection>) -> Json<O
 
 #[launch]
 async fn rocket() -> _ {
-    let db = firewalleye::models::init_db()
+    let args = Args::parse();
+
+    let db = firewalleye::models::init_db(&args.db)
         .await
         .expect("failed to connect to database");
 
     let row = AtomicI64::new(0);
 
-    rocket::build()
+    let config = Config {
+        address: args.address.parse().expect("invalid bind address"),
+        port: args.port,
+        ..Config::default()
+    };
+
+    rocket::custom(config)
         .mount("/", routes![index])
         .mount("/api", routes![openapi_json, live, stats, summary, options])
         .mount("/docs", Scalar::with_url("/scalar", ApiDoc::openapi()))

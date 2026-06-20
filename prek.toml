@@ -16,3 +16,15 @@ rev = "v0.9.2"
 hooks = [
     { id = "cargo-machete" },
 ]
+
+[[repos]]
+repo = "local"
+hooks = [
+  {
+    id = "cargo-fmt",
+    name = "cargo format",
+    language = "system",
+    entry = "cargo +nightly fmt -- ",
+    files = "\\.rs$",
+  },
+]
